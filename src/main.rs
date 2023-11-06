@@ -27,7 +27,7 @@ fn main() {
 
         let start_time = Instant::now();
         icmp_socket
-            .send_to(&icmp_packet, (target_ip, 0))
+            .send_to(&icmp_packet, (target_ip, 7))
             .expect("Failed to send packet");
 
         let mut buffer = [0; 1024]; // 1K buffer
