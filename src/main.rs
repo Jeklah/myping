@@ -17,6 +17,8 @@ use std::time::Instant;
 use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
 use tokio::time::{self, Duration};
+use tokio_icmp_socket::IcmpSocketTokio;
+use pnet_macros::Packet;
 
 // A simple ICMP echo implementation in Rust.
 //
@@ -55,12 +57,12 @@ async fn main() -> io::Result<()> {
 
     // Create an ICMP socket
     let socket = IcmpSocketTokio::new()?;
-    socket.connect(Cfg.ipv4_adr).await?;
+    socket.connect(cfg.ipv4_adr).await?;
 
     let mut complete_count: u16 = 0;
     let mut seq: u16 = 0;
     let mut seqs: HashMap<u16, Instant> = HashMap::new();
-    let mut interval = time::interval(Duration::from_millis(Cfg.interval_ms));
+    let mut interval = time::interval(Duration::from_millis(cfg.interval_ms));
 
     // Send, receive and timeout pings
     loop {
