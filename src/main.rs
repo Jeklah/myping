@@ -41,7 +41,6 @@ async fn main() -> io::Result<()> {
         }
         Some(s) => s,
     };
-    // println!("param_str: {}", param_str);
 
     // Parse the command-line parameter to a cfg object
     let cfg = match parse_cfg(param_str) {
@@ -51,7 +50,6 @@ async fn main() -> io::Result<()> {
         }
         Ok(v) => v,
     };
-    // println!("Cfg: {:?}", Cfg);
 
     // Create an ICMP socket
     let socket = IcmpSocketTokio::new()?;
@@ -153,8 +151,6 @@ fn parse_cfg(param_str: String) -> Result<Cfg, String> {
         Ok(v) => v,
     };
 
-    // println!("ipv4: {}", ipv4_adr);
-
     // Parse the ping count
     let ping_count = match params[1].parse::<u16>() {
         Err(e) => {
@@ -181,7 +177,6 @@ fn parse_cfg(param_str: String) -> Result<Cfg, String> {
             ping_count
         ));
     }
-    // println!("ping_count: {}", ping_count);
 
     // Parse the interval
     let interval_ms = match params[2].parse::<u64>() {
@@ -201,7 +196,7 @@ fn parse_cfg(param_str: String) -> Result<Cfg, String> {
             interval_ms
         ));
     }
-    // println!("interval_ms: {}", interval_ms);
+    println!("interval_ms: {}", interval_ms);
 
     // Create the Configuration object for async passing
     return Ok(Cfg {
