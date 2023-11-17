@@ -17,8 +17,6 @@ use std::time::Instant;
 use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
 use tokio::time::{self, Duration};
-use tokio_icmp_socket::IcmpSocketTokio;
-use pnet_macros::Packet;
 
 // A simple ICMP echo implementation in Rust.
 //
@@ -76,16 +74,16 @@ async fn main() -> io::Result<()> {
                 seq += 1;
 
                 // Send one ping message
-                let res_tx = socket.send_ping(PKT_ID, seq).await;
+                let res_tx = socket.send_ping(PKT_ID, seq).await?;
 
                 // Store ping send time by sequence number
-                seqs.insert(seq, res_tx.time);
+                seqs.insert(seq, res_tx.tme);
             }
-            res_tx = socket.recv_ping() => {
+            res_rx = socket.recv_ping() => {
                 // Ping response messages may return sequence numbers out of order
                 // Map is used to associate the sequence number to the send time
 
-                completed_count += 1;
+                complete_count += 1;
 
                 let seq_time_rx = match res_rx {
                     Err(e) => {
@@ -96,12 +94,12 @@ async fn main() -> io::Result<()> {
                 };
                 if let Some(time_tx) = seqs.remove(&seq_time_rx.seq) {
                     // Calculate the round-trip time
-                    let dur = seq_time_rx.tme - tme_tx;
+                    let dur = seq_time_rx.tme - time_tx;
                     // IPv4, icmp_sequence_number, elapsed_time_in_milliseconds
                     println!("{}, {}, {}us", cfg.ipv4_adr, seq_time_rx.seq, dur.as_micros());
 
                     // Check if all pings have completed
-                    if completed_count >= cfg.ping_count {
+                    if complete_count >= cfg.ping_count {
                         break;
                     }
                 } else {
@@ -111,19 +109,19 @@ async fn main() -> io::Result<()> {
             }
             _ = async {
                 // Remove timed out pings
-                const PING_TIMEOUT: dURATION = Duration::NEW(5, 0);
+                const PING_TIMEOUT: Duration = Duration::new(5, 0);
                 seqs.retain(|_, tme_tx| {
-                    let retain = Instant::new() < *tme_tx + PING_TIMEOUT;
+                    let retain = Instant::now() < *tme_tx + PING_TIMEOUT;
                     if !retain {
                         // Timeout occurred
-                        completed_count += 1;
+                        complete_count += 1;
                     }
 
                     retain
                 })
             } => {
                 // All pings received or timed out?
-                if completed_count >= Cfg.ping_count {
+                if complete_count >= cfg.ping_count {
                     // Exit select loop
                     break
                 }
@@ -145,7 +143,7 @@ fn parse_cfg(param_str: String) -> Result<Cfg, String> {
     }
 
     // Parse the IPv4 address
-    let ipv4_adr = match params[0].parse::<Ipv4Addr>() {
+    let ipv4 = match params[0].parse::<Ipv4Addr>() {
         Err(e) => {
             return Err(format!(
                 "Invalid parameter part: unable to parse address '{}' as IPv4: {}",
@@ -158,7 +156,7 @@ fn parse_cfg(param_str: String) -> Result<Cfg, String> {
     // println!("ipv4: {}", ipv4_adr);
 
     // Parse the ping count
-    let ping_count = match paramas[1].parse::<u16>() {
+    let ping_count = match params[1].parse::<u16>() {
         Err(e) => {
             return Err(format!(
                 "Invalid parameter part: unable to parse ping count '{}' as u16: {}",
@@ -370,7 +368,7 @@ impl IcmpSocketTokio {
 
     // Send a ping echo message.
     pub async fn send_ping(&self, id: u16, seq: u16) -> io::Result<SeqTme> {
-        let buf_tx = create_echo_pkt(id, seq)?;
+        let buf_tx = create_echo_pkt(id, seq);
 
         let res = match self
             .socket
@@ -400,7 +398,7 @@ impl IcmpSocketTokio {
             Err(e) => Err(e),
             Ok(count_rx) => {
                 let tme = Instant::now();
-                let seq = read_seq_from_echo_pkt(buf_tx);
+                let seq = read_seq_from_echo_pkt(buf_rx);
                 assert_eq!(count_rx, PKT_BUF_SIZE);
                 Ok(SeqTme { seq, tme })
             }
